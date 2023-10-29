@@ -1,6 +1,8 @@
 package com.example.blogapi.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,9 +19,13 @@ public class BlogUser {
     @Column(name = "last_name")
     private String lastName;
     @Column(name = "email")
+    @NotBlank
+    @Email
     private String email;
     @OneToMany(mappedBy = "blogUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Post> posts = new ArrayList<>();
+    @OneToMany(mappedBy = "blogUser", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments;
     public BlogUser(){}
 
     public BlogUser(String firstName, String lastName, String email) {
@@ -58,6 +64,12 @@ public class BlogUser {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+    public void addComment(Comment comment){
+        if(comments == null){
+            comments = new ArrayList<>();
+        }
+        comments.add(comment);
     }
 
     @Override

@@ -2,6 +2,8 @@ package com.example.blogapi.controller;
 
 import com.example.blogapi.entity.BlogUser;
 import com.example.blogapi.entity.Post;
+import com.example.blogapi.exceptions.BadRequestException;
+import com.example.blogapi.exceptions.GenericNotFoundException;
 import com.example.blogapi.service.PostService;
 import com.example.blogapi.service.UserService;
 import jakarta.transaction.Transactional;
@@ -27,28 +29,49 @@ public class PostController {
         return postService.findAll();
     }
     @GetMapping("/{id}")
-    public Post findById(@PathVariable int id){
-        return postService.findById(id).get();
+    public Post findById(@PathVariable String id){
+        Post post = new Post();
+        try {
+            int postId = Integer.parseInt(id);
+            post = (postService.findById(postId)).orElse(null);
+        } catch (Exception exception){
+            throw  new BadRequestException("Invalid way to access data.");
+        }
+        if(post == null){
+            throw new GenericNotFoundException(String.format("No post with id[%s] was found.", id));
+        }
+        return post;
     }
     @GetMapping("/user/{id}")
-    public List<Post> findAllPostsByUser(@PathVariable int id){
-        BlogUser blogUser = userService.findById(id).get();
-        System.out.println(blogUser);
+    public List<Post> findAllPostsByUser(@PathVariable String id){
+        BlogUser blogUser = new BlogUser();
+        try {
+            int userId = Integer.parseInt(id);
+            blogUser = userService.findById(userId).orElse(null);
+        }catch (Exception exception){
+            throw new BadRequestException("Invalid way to access data.");
+        }
+        if(blogUser == null){
+            throw new GenericNotFoundException(String.format("No user with id[%s] was found.", id));
+        }
         return postService.findByBlogUser(blogUser);
     }
     @PostMapping("/{id}")
     @Transactional
-    public ResponseEntity<Post> save(@PathVariable int id,@RequestBody Post post){
-        BlogUser blogUser = userService.findById(id).get();
-        if(blogUser != null){
-            post.setBlogUser(blogUser);
-            postService.save(post);
-            return new ResponseEntity<>(post, HttpStatus.CREATED);
-
+    public ResponseEntity<Post> save(@PathVariable String id,@RequestBody Post post){
+        BlogUser blogUser = new BlogUser();
+        try{
+            int userId = Integer.parseInt(id);
+            blogUser = userService.findById(userId).orElse(null);
+        } catch (Exception exception){
+            throw  new BadRequestException("Invalid way to save data.");
         }
-        else {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        if(blogUser == null){
+            throw new GenericNotFoundException(String.format("No user with id[%s] was found.", id));
         }
+        post.setBlogUser(blogUser);
+        postService.save(post);
+        return new ResponseEntity<>(post, HttpStatus.CREATED);
     }
     @PutMapping("")
     @Transactional
@@ -56,11 +79,12 @@ public class PostController {
         Post oldPost = postService.findById(post.getId()).orElse(null);
         if(oldPost == null)
         {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            throw new GenericNotFoundException(String.format("No post with id[%s] was found.", post.getId()));
+
         }
         oldPost.setContent(post.getContent());
         postService.save(oldPost);
-        return new ResponseEntity<>(post, HttpStatus.ACCEPTED);
+        return new ResponseEntity<>(post, HttpStatus.CREATED);
     }
     @DeleteMapping("/{id}")
     @Transactional
@@ -70,8 +94,17 @@ public class PostController {
     }
     @DeleteMapping("/user/{id}")
     @Transactional
-    public ResponseEntity<String> deleteByUser(@PathVariable int id){
-        BlogUser blogUser = userService.findById(id).get();
+    public ResponseEntity<String> deleteByUser(@PathVariable String id){
+        BlogUser blogUser = new BlogUser();
+        try{
+            int userId = Integer.parseInt(id);
+            blogUser = userService.findById(userId).orElse(null);
+        }catch (Exception e){
+            throw  new BadRequestException("Invalid way to delete data.");
+        }
+        if(blogUser == null){
+            throw new GenericNotFoundException(String.format("No user with id[%s] was found.", id));
+        }
         postService.deleteByBlogUser(blogUser);
         return new ResponseEntity<>(String.format("All posts by user '%s' have been deleted.",blogUser.getFirstName())
                 ,HttpStatus.NO_CONTENT);

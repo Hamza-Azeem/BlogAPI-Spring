@@ -4,6 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "post")
 public class Post {
@@ -19,6 +22,8 @@ public class Post {
     @JoinColumn(name = "blogUser_id")
     @JsonIgnore
     private BlogUser blogUser;
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL)
+    private List<Comment> comments;
     public Post(){
         this.dateCreated = new Timestamp(System.currentTimeMillis());
     }
@@ -63,4 +68,12 @@ public class Post {
     public void setBlogUser(BlogUser blogUser) {
         this.blogUser = blogUser;
     }
+    public void addComment(Comment comment){
+        if(comments == null){
+            comments = new ArrayList<>();
+        }
+        comments.add(comment);
+        comment.setPost(this);
+    }
+
 }
