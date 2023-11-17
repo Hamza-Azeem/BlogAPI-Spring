@@ -4,9 +4,9 @@ import com.example.blogapi.entity.Comment;
 import com.example.blogapi.entity.Post;
 import com.example.blogapi.exceptions.BadRequestException;
 import com.example.blogapi.exceptions.GenericNotFoundException;
-import com.example.blogapi.service.CommentService;
-import com.example.blogapi.service.PostService;
-import com.example.blogapi.service.UserService;
+import com.example.blogapi.repository.CommentRepository;
+import com.example.blogapi.repository.PostRepository;
+import com.example.blogapi.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,11 +17,11 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/comments")
 public class CommentController {
-    private final CommentService commentService;
-    private final PostService postService;
-    private final UserService userService;
+    private final CommentRepository commentService;
+    private final PostRepository postService;
+    private final UserRepository userService;
     @Autowired
-    public CommentController(CommentService commentService, PostService postService, UserService userService){
+    public CommentController(CommentRepository commentService, PostRepository postService, UserRepository userService){
         this.commentService = commentService;
         this.postService = postService;
         this.userService = userService;

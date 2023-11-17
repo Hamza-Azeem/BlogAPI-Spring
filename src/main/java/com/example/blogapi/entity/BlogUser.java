@@ -3,13 +3,17 @@ package com.example.blogapi.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Entity
 @Table(name = "blog_user")
-public class BlogUser {
+public class BlogUser implements UserDetails {
     @Id
     @Column(name = "user_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -18,10 +22,17 @@ public class BlogUser {
     private String firstName;
     @Column(name = "last_name")
     private String lastName;
-    @Column(name = "email")
+    @Column(name = "email", unique = true)
     @NotBlank
     @Email
     private String email;
+
+    @Column(name = "password")
+    @NotBlank
+    private String password;
+
+    @Column(name = "role")
+    private Role role;
     @OneToMany(mappedBy = "blogUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Post> posts = new ArrayList<>();
     @OneToMany(mappedBy = "blogUser", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -32,6 +43,14 @@ public class BlogUser {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+    }
+
+    public BlogUser(String firstName, String lastName, String email, String password, Role role) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.password = password;
+        this.role = role;
     }
 
     public int getId() {
@@ -62,6 +81,14 @@ public class BlogUser {
         return email;
     }
 
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
     public void setEmail(String email) {
         this.email = email;
     }
@@ -80,5 +107,40 @@ public class BlogUser {
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +
                 '}';
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority(role.name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 }
