@@ -23,11 +23,9 @@ import org.springframework.security.core.Authentication;
 @Validated
 public class UserController {
     private final UserRepository userRepository;
-    private final JwtService jwtService;
     @Autowired
     public UserController(UserRepository userRepository, JwtService jwtService){
         this.userRepository = userRepository;
-        this.jwtService = jwtService;
     }
 
     @GetMapping("")
