@@ -11,6 +11,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -18,13 +20,13 @@ import java.util.List;
 @RequestMapping("/api/comments")
 public class CommentController {
     private final CommentRepository commentService;
-    private final PostRepository postService;
-    private final UserRepository userService;
+    private final PostRepository postRepository;
+    private final UserRepository userRepository;
     @Autowired
     public CommentController(CommentRepository commentService, PostRepository postService, UserRepository userService){
         this.commentService = commentService;
-        this.postService = postService;
-        this.userService = userService;
+        this.postRepository = postService;
+        this.userRepository = userService;
     }
     @GetMapping("")
     public List<Comment> findAll(){
@@ -50,7 +52,7 @@ public class CommentController {
         Post post = new Post();
         try{
             int postId = Integer.parseInt(id);
-            post = postService.findById(postId).orElse(null);
+            post = postRepository.findById(postId).orElse(null);
         }catch (Exception e){
             throw  new BadRequestException("Invalid way to access data.");
         }
@@ -64,7 +66,7 @@ public class CommentController {
         BlogUser blogUser = new BlogUser();
         try{
             int userId = Integer.parseInt(id);
-            blogUser = userService.findById(userId).orElse(null);
+            blogUser = userRepository.findById(userId).orElse(null);
         }catch (Exception e){
             throw  new BadRequestException("Invalid way to access data.");
         }
@@ -73,35 +75,34 @@ public class CommentController {
         }
         return new ResponseEntity<>(commentService.findByBlogUser(blogUser), HttpStatus.ACCEPTED);
     }
-    @PostMapping("/{id}")
+    @PostMapping("")
     @Transactional
-    public ResponseEntity<Comment> save(@PathVariable String id,@RequestParam("user-id") String userId ,@RequestBody Comment comment)
+    public ResponseEntity<Comment> save(@RequestParam String postViewed, @RequestBody Comment comment, Authentication authentication)
     {
         Post post = new Post();
-        BlogUser blogUser = new BlogUser();
+        String authenticatedUserEmail = authentication.getName();
+        BlogUser commentOwner = userRepository.findByEmail(authenticatedUserEmail).get();
         try{
-            int postId = Integer.parseInt(id);
-            post = postService.findById(postId).orElse(null);
-            int blogUserId = Integer.parseInt(userId);
-            blogUser = userService.findById(blogUserId).orElse(null);
+            int postId = Integer.parseInt(postViewed);
+            post = postRepository.findById(postId).orElse(null);
         }catch (Exception e){
             throw  new BadRequestException("Invalid way to access data.");
         }
         if(post == null){
-            throw new GenericNotFoundException(String.format("No post with id[%s] was found.", id));
-        }else if(blogUser == null){
-            throw new GenericNotFoundException(String.format("No user with id[%s] was found.", id));
+            throw new GenericNotFoundException(String.format("No post with id[%s] was found.", postViewed));
         }
-        comment.setBlogUser(blogUser);
+        comment.setBlogUser(commentOwner);
         commentService.save(comment);
         post.addComment(comment);
-        postService.save(post);
-        blogUser.addComment(comment);
-        userService.save(blogUser);
+        postRepository.save(post);
+        commentOwner.addComment(comment);
+        userRepository.save(commentOwner);
         return new ResponseEntity<>(comment, HttpStatus.CREATED);
     }
     @PutMapping("/{id}")
-    public ResponseEntity<Comment> updateComment(@PathVariable String id, @RequestBody Comment comment){
+    @Transactional
+    public ResponseEntity<Comment> updateComment(@PathVariable String id, @RequestBody Comment comment, Authentication authentication){
+        String authenticatedUserEmail = authentication.getName();
         Comment oldComment = new Comment();
         try{
             int commentId = Integer.parseInt(id);
@@ -113,6 +114,10 @@ public class CommentController {
         if(oldComment == null){
             throw new GenericNotFoundException(String.format("No comment with id[%s] was found.", id));
         }
+        BlogUser commentOwner = oldComment.getBlogUser();
+        if(!authenticatedUserEmail.equals(commentOwner.getEmail())){
+            throw new AccessDeniedException("You can't edit another user's comment.");
+        }
         oldComment.setContent(comment.getContent());
         commentService.save(oldComment);
         return new ResponseEntity<>(oldComment, HttpStatus.CREATED);
@@ -120,7 +125,12 @@ public class CommentController {
 
     @DeleteMapping("/{id}")
     @Transactional
-    public ResponseEntity<String> deleteComment(@PathVariable int id){
+    public ResponseEntity<String> deleteComment(@PathVariable int id, Authentication authentication){
+        String authenticatedUserEmail = authentication.getName();
+        BlogUser commentOwner = commentService.findById(id).get().getBlogUser();
+        if(!authenticatedUserEmail.equals(commentOwner.getEmail())){
+            throw new AccessDeniedException("You can't delete another user's comment.");
+        }
         commentService.deleteById(id);
         return new ResponseEntity<>("Comment removed", HttpStatus.NO_CONTENT);
     }
